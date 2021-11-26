@@ -582,18 +582,6 @@ class EffectCanvas {
         this.customPass = new _shaderPass.ShaderPass(myEffect);
         this.customPass.renderToScreen = true;
         this.composer.addPass(this.customPass);
-        var button = document.getElementById("link");
-        button.onclick = this.rotateCamera.bind(this);
-    }
-    rotateCamera() {
-        console.log(this.camera);
-        if (this.camera) {
-            console.log(this.camera.rotation.y);
-            gsap.to(this.camera.position, 4, {
-                y: this.camera.position.y - 3
-            });
-            console.log(this.camera.rotation.y);
-        }
     }
     onWindowResize() {
         init();
@@ -747,7 +735,205 @@ class Stem {
 init();
 new EffectCanvas();
 
-},{"three":"64dkv","./shaders/vertexShader.glsl":"epDrq","./shaders/fragmentShader.glsl":"48QG0","./shaders/staticVertexShader.glsl":"7rDD1","./shaders/basicFragment.glsl":"76x0e","three/examples/jsm/postprocessing/EffectComposer.js":"ck46f","three/examples/jsm/postprocessing/RenderPass.js":"4a7v8","three/examples/jsm/postprocessing/ShaderPass":"4bjki","@parcel/transformer-js/src/esmodule-helpers.js":"ciiiV"}],"64dkv":[function(require,module,exports) {
+},{"./shaders/vertexShader.glsl":"epDrq","./shaders/fragmentShader.glsl":"48QG0","./shaders/staticVertexShader.glsl":"7rDD1","./shaders/basicFragment.glsl":"76x0e","three/examples/jsm/postprocessing/EffectComposer.js":"ck46f","three/examples/jsm/postprocessing/RenderPass.js":"4a7v8","three/examples/jsm/postprocessing/ShaderPass":"4bjki","@parcel/transformer-js/src/esmodule-helpers.js":"ciiiV","three":"64dkv"}],"epDrq":[function(require,module,exports) {
+module.exports = "#define GLSLIFY 1\nuniform sampler2D uTexture;\nuniform vec2 uOffset;\nvarying vec2 vUv;\n\n#define M_PI 3.1415926535897932384626433832795\n\nvec3 deformationCurve(vec3 position, vec2 uv, vec2 offset) {\n   position.x = position.x + (sin(uv.y * M_PI) * offset.x); \n   position.y = position.y + (sin(uv.x * 10.) * offset.y);\n\n   return position;\n}\n\nvoid main() {\n   vUv = uv;\n\n   gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n}";
+
+},{}],"48QG0":[function(require,module,exports) {
+module.exports = "#define GLSLIFY 1\nuniform sampler2D uTexture;\nuniform float uAlpha;\nuniform vec2 uOffset;\nvarying vec2 vUv;\n\nvec4 rgbShift(sampler2D textureImage, vec2 uv, vec2 offset) {\nfloat r = texture2D(textureImage,uv + offset/4.).x;\nfloat g = texture2D(textureImage,uv).y;\nfloat b = texture2D(textureImage,uv).z;\n\n//vec2 gb = texture2D(textureImage,uv).gb;\nfloat a = texture2D(textureImage,uv).a + texture2D(textureImage,uv + offset).a  ;\nreturn vec4(r,g,b, a);\n}\n\nvoid main() {\nvec4 color = rgbShift(uTexture,vUv,uOffset);\ngl_FragColor = vec4(color);\n}";
+
+},{}],"7rDD1":[function(require,module,exports) {
+module.exports = "#define GLSLIFY 1\nuniform sampler2D uTexture;\nuniform vec2 uOffset;\nvarying vec2 vUv;\n\n#define M_PI 3.1415926535897932384626433832795\n\nvec3 deformationCurve(vec3 position, vec2 uv, vec2 offset) {\n   position.x = position.x + offset.x; \n   position.y = position.y + offset.y;\n   return position;\n}\n\nvoid main() {\n   vUv = uv;\n   gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n}";
+
+},{}],"76x0e":[function(require,module,exports) {
+module.exports = "#define GLSLIFY 1\nuniform sampler2D uTexture;\nuniform float uAlpha;\nvarying vec2 vUv;\n\nvoid main() {\ngl_FragColor = vec4(texture2D(uTexture,vUv).rgb,texture2D(uTexture,vUv).w);\n}";
+
+},{}],"ck46f":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "EffectComposer", ()=>EffectComposer
+);
+parcelHelpers.export(exports, "Pass", ()=>Pass
+);
+parcelHelpers.export(exports, "FullScreenQuad", ()=>FullScreenQuad
+);
+var _three = require("three");
+var _copyShaderJs = require("../shaders/CopyShader.js");
+var _shaderPassJs = require("../postprocessing/ShaderPass.js");
+var _maskPassJs = require("../postprocessing/MaskPass.js");
+class EffectComposer {
+    constructor(renderer, renderTarget){
+        this.renderer = renderer;
+        if (renderTarget === undefined) {
+            const parameters = {
+                minFilter: _three.LinearFilter,
+                magFilter: _three.LinearFilter,
+                format: _three.RGBAFormat
+            };
+            const size = renderer.getSize(new _three.Vector2());
+            this._pixelRatio = renderer.getPixelRatio();
+            this._width = size.width;
+            this._height = size.height;
+            renderTarget = new _three.WebGLRenderTarget(this._width * this._pixelRatio, this._height * this._pixelRatio, parameters);
+            renderTarget.texture.name = 'EffectComposer.rt1';
+        } else {
+            this._pixelRatio = 1;
+            this._width = renderTarget.width;
+            this._height = renderTarget.height;
+        }
+        this.renderTarget1 = renderTarget;
+        this.renderTarget2 = renderTarget.clone();
+        this.renderTarget2.texture.name = 'EffectComposer.rt2';
+        this.writeBuffer = this.renderTarget1;
+        this.readBuffer = this.renderTarget2;
+        this.renderToScreen = true;
+        this.passes = [];
+        // dependencies
+        if (_copyShaderJs.CopyShader === undefined) console.error('THREE.EffectComposer relies on CopyShader');
+        if (_shaderPassJs.ShaderPass === undefined) console.error('THREE.EffectComposer relies on ShaderPass');
+        this.copyPass = new _shaderPassJs.ShaderPass(_copyShaderJs.CopyShader);
+        this.clock = new _three.Clock();
+    }
+    swapBuffers() {
+        const tmp = this.readBuffer;
+        this.readBuffer = this.writeBuffer;
+        this.writeBuffer = tmp;
+    }
+    addPass(pass) {
+        this.passes.push(pass);
+        pass.setSize(this._width * this._pixelRatio, this._height * this._pixelRatio);
+    }
+    insertPass(pass, index) {
+        this.passes.splice(index, 0, pass);
+        pass.setSize(this._width * this._pixelRatio, this._height * this._pixelRatio);
+    }
+    removePass(pass) {
+        const index = this.passes.indexOf(pass);
+        if (index !== -1) this.passes.splice(index, 1);
+    }
+    isLastEnabledPass(passIndex) {
+        for(let i = passIndex + 1; i < this.passes.length; i++){
+            if (this.passes[i].enabled) return false;
+        }
+        return true;
+    }
+    render(deltaTime) {
+        // deltaTime value is in seconds
+        if (deltaTime === undefined) deltaTime = this.clock.getDelta();
+        const currentRenderTarget = this.renderer.getRenderTarget();
+        let maskActive = false;
+        for(let i = 0, il = this.passes.length; i < il; i++){
+            const pass = this.passes[i];
+            if (pass.enabled === false) continue;
+            pass.renderToScreen = this.renderToScreen && this.isLastEnabledPass(i);
+            pass.render(this.renderer, this.writeBuffer, this.readBuffer, deltaTime, maskActive);
+            if (pass.needsSwap) {
+                if (maskActive) {
+                    const context = this.renderer.getContext();
+                    const stencil = this.renderer.state.buffers.stencil;
+                    //context.stencilFunc( context.NOTEQUAL, 1, 0xffffffff );
+                    stencil.setFunc(context.NOTEQUAL, 1, 4294967295);
+                    this.copyPass.render(this.renderer, this.writeBuffer, this.readBuffer, deltaTime);
+                    //context.stencilFunc( context.EQUAL, 1, 0xffffffff );
+                    stencil.setFunc(context.EQUAL, 1, 4294967295);
+                }
+                this.swapBuffers();
+            }
+            if (_maskPassJs.MaskPass !== undefined) {
+                if (pass instanceof _maskPassJs.MaskPass) maskActive = true;
+                else if (pass instanceof _maskPassJs.ClearMaskPass) maskActive = false;
+            }
+        }
+        this.renderer.setRenderTarget(currentRenderTarget);
+    }
+    reset(renderTarget) {
+        if (renderTarget === undefined) {
+            const size = this.renderer.getSize(new _three.Vector2());
+            this._pixelRatio = this.renderer.getPixelRatio();
+            this._width = size.width;
+            this._height = size.height;
+            renderTarget = this.renderTarget1.clone();
+            renderTarget.setSize(this._width * this._pixelRatio, this._height * this._pixelRatio);
+        }
+        this.renderTarget1.dispose();
+        this.renderTarget2.dispose();
+        this.renderTarget1 = renderTarget;
+        this.renderTarget2 = renderTarget.clone();
+        this.writeBuffer = this.renderTarget1;
+        this.readBuffer = this.renderTarget2;
+    }
+    setSize(width, height) {
+        this._width = width;
+        this._height = height;
+        const effectiveWidth = this._width * this._pixelRatio;
+        const effectiveHeight = this._height * this._pixelRatio;
+        this.renderTarget1.setSize(effectiveWidth, effectiveHeight);
+        this.renderTarget2.setSize(effectiveWidth, effectiveHeight);
+        for(let i = 0; i < this.passes.length; i++)this.passes[i].setSize(effectiveWidth, effectiveHeight);
+    }
+    setPixelRatio(pixelRatio) {
+        this._pixelRatio = pixelRatio;
+        this.setSize(this._width, this._height);
+    }
+}
+class Pass {
+    constructor(){
+        // if set to true, the pass is processed by the composer
+        this.enabled = true;
+        // if set to true, the pass indicates to swap read and write buffer after rendering
+        this.needsSwap = true;
+        // if set to true, the pass clears its buffer before rendering
+        this.clear = false;
+        // if set to true, the result of the pass is rendered to screen. This is set automatically by EffectComposer.
+        this.renderToScreen = false;
+    }
+    setSize() {
+    }
+    render() {
+        console.error('THREE.Pass: .render() must be implemented in derived pass.');
+    }
+}
+// Helper for passes that need to fill the viewport with a single quad.
+const _camera = new _three.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+// https://github.com/mrdoob/three.js/pull/21358
+const _geometry = new _three.BufferGeometry();
+_geometry.setAttribute('position', new _three.Float32BufferAttribute([
+    -1,
+    3,
+    0,
+    -1,
+    -1,
+    0,
+    3,
+    -1,
+    0
+], 3));
+_geometry.setAttribute('uv', new _three.Float32BufferAttribute([
+    0,
+    2,
+    0,
+    0,
+    2,
+    0
+], 2));
+class FullScreenQuad {
+    constructor(material){
+        this._mesh = new _three.Mesh(_geometry, material);
+    }
+    dispose() {
+        this._mesh.geometry.dispose();
+    }
+    render(renderer) {
+        renderer.render(this._mesh, _camera);
+    }
+    get material() {
+        return this._mesh.material;
+    }
+    set material(value) {
+        this._mesh.material = value;
+    }
+}
+
+},{"three":"64dkv","../shaders/CopyShader.js":"aoBV9","../postprocessing/ShaderPass.js":"4bjki","../postprocessing/MaskPass.js":"kKPUM","@parcel/transformer-js/src/esmodule-helpers.js":"ciiiV"}],"64dkv":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "ACESFilmicToneMapping", ()=>ACESFilmicToneMapping
@@ -30694,205 +30880,7 @@ exports.export = function(dest, destName, get) {
     });
 };
 
-},{}],"epDrq":[function(require,module,exports) {
-module.exports = "#define GLSLIFY 1\nuniform sampler2D uTexture;\nuniform vec2 uOffset;\nvarying vec2 vUv;\n\n#define M_PI 3.1415926535897932384626433832795\n\nvec3 deformationCurve(vec3 position, vec2 uv, vec2 offset) {\n   position.x = position.x + (sin(uv.y * M_PI) * offset.x); \n   position.y = position.y + (sin(uv.x * 10.) * offset.y);\n\n   return position;\n}\n\nvoid main() {\n   vUv = uv;\n\n   gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n}";
-
-},{}],"48QG0":[function(require,module,exports) {
-module.exports = "#define GLSLIFY 1\nuniform sampler2D uTexture;\nuniform float uAlpha;\nuniform vec2 uOffset;\nvarying vec2 vUv;\n\nvec4 rgbShift(sampler2D textureImage, vec2 uv, vec2 offset) {\nfloat r = texture2D(textureImage,uv + offset/4.).x;\nfloat g = texture2D(textureImage,uv).y;\nfloat b = texture2D(textureImage,uv).z;\n\n//vec2 gb = texture2D(textureImage,uv).gb;\nfloat a = texture2D(textureImage,uv).a + texture2D(textureImage,uv + offset).a  ;\nreturn vec4(r,g,b, a);\n}\n\nvoid main() {\nvec4 color = rgbShift(uTexture,vUv,uOffset);\ngl_FragColor = vec4(color);\n}";
-
-},{}],"7rDD1":[function(require,module,exports) {
-module.exports = "#define GLSLIFY 1\nuniform sampler2D uTexture;\nuniform vec2 uOffset;\nvarying vec2 vUv;\n\n#define M_PI 3.1415926535897932384626433832795\n\nvec3 deformationCurve(vec3 position, vec2 uv, vec2 offset) {\n   position.x = position.x + offset.x; \n   position.y = position.y + offset.y;\n   return position;\n}\n\nvoid main() {\n   vUv = uv;\n   gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n}";
-
-},{}],"76x0e":[function(require,module,exports) {
-module.exports = "#define GLSLIFY 1\nuniform sampler2D uTexture;\nuniform float uAlpha;\nvarying vec2 vUv;\n\nvoid main() {\ngl_FragColor = vec4(texture2D(uTexture,vUv).rgb,texture2D(uTexture,vUv).w);\n}";
-
-},{}],"ck46f":[function(require,module,exports) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "EffectComposer", ()=>EffectComposer
-);
-parcelHelpers.export(exports, "Pass", ()=>Pass
-);
-parcelHelpers.export(exports, "FullScreenQuad", ()=>FullScreenQuad
-);
-var _three = require("three");
-var _copyShaderJs = require("../shaders/CopyShader.js");
-var _shaderPassJs = require("../postprocessing/ShaderPass.js");
-var _maskPassJs = require("../postprocessing/MaskPass.js");
-class EffectComposer {
-    constructor(renderer, renderTarget){
-        this.renderer = renderer;
-        if (renderTarget === undefined) {
-            const parameters = {
-                minFilter: _three.LinearFilter,
-                magFilter: _three.LinearFilter,
-                format: _three.RGBAFormat
-            };
-            const size = renderer.getSize(new _three.Vector2());
-            this._pixelRatio = renderer.getPixelRatio();
-            this._width = size.width;
-            this._height = size.height;
-            renderTarget = new _three.WebGLRenderTarget(this._width * this._pixelRatio, this._height * this._pixelRatio, parameters);
-            renderTarget.texture.name = 'EffectComposer.rt1';
-        } else {
-            this._pixelRatio = 1;
-            this._width = renderTarget.width;
-            this._height = renderTarget.height;
-        }
-        this.renderTarget1 = renderTarget;
-        this.renderTarget2 = renderTarget.clone();
-        this.renderTarget2.texture.name = 'EffectComposer.rt2';
-        this.writeBuffer = this.renderTarget1;
-        this.readBuffer = this.renderTarget2;
-        this.renderToScreen = true;
-        this.passes = [];
-        // dependencies
-        if (_copyShaderJs.CopyShader === undefined) console.error('THREE.EffectComposer relies on CopyShader');
-        if (_shaderPassJs.ShaderPass === undefined) console.error('THREE.EffectComposer relies on ShaderPass');
-        this.copyPass = new _shaderPassJs.ShaderPass(_copyShaderJs.CopyShader);
-        this.clock = new _three.Clock();
-    }
-    swapBuffers() {
-        const tmp = this.readBuffer;
-        this.readBuffer = this.writeBuffer;
-        this.writeBuffer = tmp;
-    }
-    addPass(pass) {
-        this.passes.push(pass);
-        pass.setSize(this._width * this._pixelRatio, this._height * this._pixelRatio);
-    }
-    insertPass(pass, index) {
-        this.passes.splice(index, 0, pass);
-        pass.setSize(this._width * this._pixelRatio, this._height * this._pixelRatio);
-    }
-    removePass(pass) {
-        const index = this.passes.indexOf(pass);
-        if (index !== -1) this.passes.splice(index, 1);
-    }
-    isLastEnabledPass(passIndex) {
-        for(let i = passIndex + 1; i < this.passes.length; i++){
-            if (this.passes[i].enabled) return false;
-        }
-        return true;
-    }
-    render(deltaTime) {
-        // deltaTime value is in seconds
-        if (deltaTime === undefined) deltaTime = this.clock.getDelta();
-        const currentRenderTarget = this.renderer.getRenderTarget();
-        let maskActive = false;
-        for(let i = 0, il = this.passes.length; i < il; i++){
-            const pass = this.passes[i];
-            if (pass.enabled === false) continue;
-            pass.renderToScreen = this.renderToScreen && this.isLastEnabledPass(i);
-            pass.render(this.renderer, this.writeBuffer, this.readBuffer, deltaTime, maskActive);
-            if (pass.needsSwap) {
-                if (maskActive) {
-                    const context = this.renderer.getContext();
-                    const stencil = this.renderer.state.buffers.stencil;
-                    //context.stencilFunc( context.NOTEQUAL, 1, 0xffffffff );
-                    stencil.setFunc(context.NOTEQUAL, 1, 4294967295);
-                    this.copyPass.render(this.renderer, this.writeBuffer, this.readBuffer, deltaTime);
-                    //context.stencilFunc( context.EQUAL, 1, 0xffffffff );
-                    stencil.setFunc(context.EQUAL, 1, 4294967295);
-                }
-                this.swapBuffers();
-            }
-            if (_maskPassJs.MaskPass !== undefined) {
-                if (pass instanceof _maskPassJs.MaskPass) maskActive = true;
-                else if (pass instanceof _maskPassJs.ClearMaskPass) maskActive = false;
-            }
-        }
-        this.renderer.setRenderTarget(currentRenderTarget);
-    }
-    reset(renderTarget) {
-        if (renderTarget === undefined) {
-            const size = this.renderer.getSize(new _three.Vector2());
-            this._pixelRatio = this.renderer.getPixelRatio();
-            this._width = size.width;
-            this._height = size.height;
-            renderTarget = this.renderTarget1.clone();
-            renderTarget.setSize(this._width * this._pixelRatio, this._height * this._pixelRatio);
-        }
-        this.renderTarget1.dispose();
-        this.renderTarget2.dispose();
-        this.renderTarget1 = renderTarget;
-        this.renderTarget2 = renderTarget.clone();
-        this.writeBuffer = this.renderTarget1;
-        this.readBuffer = this.renderTarget2;
-    }
-    setSize(width, height) {
-        this._width = width;
-        this._height = height;
-        const effectiveWidth = this._width * this._pixelRatio;
-        const effectiveHeight = this._height * this._pixelRatio;
-        this.renderTarget1.setSize(effectiveWidth, effectiveHeight);
-        this.renderTarget2.setSize(effectiveWidth, effectiveHeight);
-        for(let i = 0; i < this.passes.length; i++)this.passes[i].setSize(effectiveWidth, effectiveHeight);
-    }
-    setPixelRatio(pixelRatio) {
-        this._pixelRatio = pixelRatio;
-        this.setSize(this._width, this._height);
-    }
-}
-class Pass {
-    constructor(){
-        // if set to true, the pass is processed by the composer
-        this.enabled = true;
-        // if set to true, the pass indicates to swap read and write buffer after rendering
-        this.needsSwap = true;
-        // if set to true, the pass clears its buffer before rendering
-        this.clear = false;
-        // if set to true, the result of the pass is rendered to screen. This is set automatically by EffectComposer.
-        this.renderToScreen = false;
-    }
-    setSize() {
-    }
-    render() {
-        console.error('THREE.Pass: .render() must be implemented in derived pass.');
-    }
-}
-// Helper for passes that need to fill the viewport with a single quad.
-const _camera = new _three.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-// https://github.com/mrdoob/three.js/pull/21358
-const _geometry = new _three.BufferGeometry();
-_geometry.setAttribute('position', new _three.Float32BufferAttribute([
-    -1,
-    3,
-    0,
-    -1,
-    -1,
-    0,
-    3,
-    -1,
-    0
-], 3));
-_geometry.setAttribute('uv', new _three.Float32BufferAttribute([
-    0,
-    2,
-    0,
-    0,
-    2,
-    0
-], 2));
-class FullScreenQuad {
-    constructor(material){
-        this._mesh = new _three.Mesh(_geometry, material);
-    }
-    dispose() {
-        this._mesh.geometry.dispose();
-    }
-    render(renderer) {
-        renderer.render(this._mesh, _camera);
-    }
-    get material() {
-        return this._mesh.material;
-    }
-    set material(value) {
-        this._mesh.material = value;
-    }
-}
-
-},{"three":"64dkv","../shaders/CopyShader.js":"aoBV9","../postprocessing/ShaderPass.js":"4bjki","../postprocessing/MaskPass.js":"kKPUM","@parcel/transformer-js/src/esmodule-helpers.js":"ciiiV"}],"aoBV9":[function(require,module,exports) {
+},{}],"aoBV9":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "CopyShader", ()=>CopyShader
