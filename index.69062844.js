@@ -494,7 +494,7 @@ function smoothScroll() {
 }
 class EffectCanvas {
     constructor(){
-        this.container = document.querySelector('main');
+        this.container = document.getElementById('container');
         this.images = [
             ...document.querySelectorAll('.mesh')
         ];
@@ -522,6 +522,8 @@ class EffectCanvas {
             uMouse.x = e.clientX / window.innerWidth;
             uMouse.y = 1 - e.clientY / window.innerHeight;
         });
+        document.getElementById("button").addEventListener("click", this.onDivShrink.bind(this), false);
+        document.getElementById("arrow").addEventListener("click", this.onDivGrow.bind(this), false);
         // Create new scene
         this.scene = new _three.Scene();
         // Initialize perspective camera
@@ -584,7 +586,41 @@ class EffectCanvas {
         this.composer.addPass(this.customPass);
     }
     onWindowResize() {
-        init();
+        // init();
+        // var rect = this.container.getBoundingClientRect();
+        // console.log(rect)
+        // this.renderer.setSize(rect.width, this.viewport.height);
+        // console.log(rect.width)
+        // this.camera.aspect = rect.width / this.viewport.height; // readjust the aspect ratio.
+        // this.camera.updateProjectionMatrix(); // Used to recalulate projectin dimensions.
+        this.camera.aspect = this.viewport.aspectRatio; // readjust the aspect ratio.
+        this.camera.updateProjectionMatrix(); // Used to recalulate projectin dimensions.
+        this.renderer.setSize(this.viewport.width, this.viewport.height);
+    }
+    onDivShrink() {
+        if (this.camera) {
+            gsap.to(this.camera.position, {
+                x: -500,
+                z: perspective * 2,
+                duration: 0.5,
+                ease: "power2"
+            });
+            console.log("camera moved");
+        }
+        this.renderer.setSize(this.viewport.width * 0.15, this.viewport.height);
+        this.camera.aspect = this.viewport.width * 0.15 / this.viewport.height; // readjust the aspect ratio.
+        this.camera.updateProjectionMatrix(); // Used to recalulate projectin dimensions.
+    }
+    onDivGrow() {
+        if (this.camera) {
+            gsap.to(this.camera.position, {
+                x: 0,
+                z: perspective,
+                duration: 0.5,
+                ease: "power2"
+            });
+            console.log("camera moved");
+        }
         this.camera.aspect = this.viewport.aspectRatio; // readjust the aspect ratio.
         this.camera.updateProjectionMatrix(); // Used to recalulate projectin dimensions.
         this.renderer.setSize(this.viewport.width, this.viewport.height);
