@@ -516,7 +516,7 @@ class EffectCanvas {
         };
     }
     setupCamera() {
-        window.addEventListener('resize', this.onWindowResize.bind(this), false);
+        container.addEventListener('resize', this.onWindowResize.bind(this), false);
         document.addEventListener('mousemove', (e)=>{
             // mousemove / touchmove
             uMouse.x = e.clientX / window.innerWidth;
@@ -524,6 +524,9 @@ class EffectCanvas {
         });
         document.getElementById("button").addEventListener("click", this.onDivShrink.bind(this), false);
         document.getElementById("arrow").addEventListener("click", this.onDivGrow.bind(this), false);
+        document.getElementById("button2").addEventListener("click", this.moveCamera.bind(this), false);
+        document.getElementById("button3").addEventListener("click", this.moveCamera.bind(this), false);
+        document.getElementById("close").addEventListener("click", this.onDivGrow.bind(this), false);
         // Create new scene
         this.scene = new _three.Scene();
         // Initialize perspective camera
@@ -586,16 +589,14 @@ class EffectCanvas {
         this.composer.addPass(this.customPass);
     }
     onWindowResize() {
-        // init();
-        // var rect = this.container.getBoundingClientRect();
-        // console.log(rect)
-        // this.renderer.setSize(rect.width, this.viewport.height);
-        // console.log(rect.width)
-        // this.camera.aspect = rect.width / this.viewport.height; // readjust the aspect ratio.
-        // this.camera.updateProjectionMatrix(); // Used to recalulate projectin dimensions.
-        this.camera.aspect = this.viewport.aspectRatio; // readjust the aspect ratio.
+        // Lookup the size the browser is displaying the canvas in CSS pixels.
+        const canvas = document.querySelector("canvas");
+        const displayWidth = canvas.clientWidth;
+        const displayHeight = canvas.clientHeight;
+        console.log("displayWidth: " + displayWidth);
+        this.camera.aspect = displayWidth / displayHeight; // readjust the aspect ratio.
         this.camera.updateProjectionMatrix(); // Used to recalulate projectin dimensions.
-        this.renderer.setSize(this.viewport.width, this.viewport.height);
+        this.renderer.setSize(displayWidth, displayHeight);
     }
     onDivShrink() {
         if (this.camera) {
@@ -607,9 +608,9 @@ class EffectCanvas {
             });
             console.log("camera moved");
         }
-        this.renderer.setSize(this.viewport.width * 0.15, this.viewport.height);
-        this.camera.aspect = this.viewport.width * 0.15 / this.viewport.height; // readjust the aspect ratio.
-        this.camera.updateProjectionMatrix(); // Used to recalulate projectin dimensions.
+    // this.renderer.setSize(this.viewport.width * 0.15, this.viewport.height);
+    // this.camera.aspect = this.viewport.width * 0.15 / this.viewport.height; // readjust the aspect ratio.
+    // this.camera.updateProjectionMatrix(); // Used to recalulate projectin dimensions.
     }
     onDivGrow() {
         if (this.camera) {
@@ -628,9 +629,9 @@ class EffectCanvas {
     moveCamera() {
         if (this.camera) {
             gsap.to(this.camera.position, {
-                x: 1000,
+                z: perspective * 4,
                 duration: 1,
-                ease: "linear"
+                ease: "power2"
             });
             console.log("camera moved");
         }

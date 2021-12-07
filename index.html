@@ -85,13 +85,73 @@ document.addEventListener('DOMContentLoaded', function(event) {
                     <img src="/anna.6c586688.jpeg" class="mesh">
                 </div>
             </div>
+
+            <!-- project expand side and stem shrink left -->
             <div class="image-container">
-                <h2 id="button" onclick="expand()" style="cursor:pointer;">
+                <h2 id="button" onclick="expand()" class="project-link">
                     overbeast
                 </h2>
                 <img src="/projtitle.5ce6a8c5.png" class="mesh">
             </div>
+
+             <!-- project side and front transition -->
+            <div class="image-container">
+                <h2 id="button2" onclick="expand2()" class="project-link">
+                    transition2
+                </h2>
+                <img src="/Keiichi%20domestic%20robocop.d0470a5d.jpg" class="mesh">
+            </div>
+
+            <!-- project slide up transition -->
+            <div class="image-container">
+                <h2 id="button3" class="project-link slideup">
+                    another project
+                </h2>
+                <img src="/Keiichi%20domestic%20robocop.d0470a5d.jpg" class="mesh">
+            </div>
         </div>
+
+        <!-- project slider content -->
+        <div class="project-slider close" id="close">
+            <div class="heading">
+                <h1>
+                    Project Title
+                </h1>
+            </div>
+            <img src="/overbeastfilm.7ca50924.png" style="width: 100%;">
+            <div class="mini-columns">
+                <div class="column" style="text-align: center;">
+                    <h2>
+                        Client
+                    </h2>
+                    <p style="width: unset;">
+                        Name of Client
+                    </p>
+                </div>
+                <div class="column" style="text-align: center;">
+                    <h2>
+                        Designers
+                    </h2>
+                    <p style="width: unset;">
+                        Name of Designers
+                    </p>
+                </div>
+            </div>
+            <div class="mini-columns">
+                <div class="column">
+                    <img src="/overbeast.23c606f6.png" width="100%">
+                </div>
+                <div class="column">
+                    <img src="/overbeast.23c606f6.png" width="100%">
+                </div>
+            </div>
+            <div class="heading">
+                <h1>
+                    Another Title
+                </h1>
+            </div>
+        </div>
+
 
         <!-- project content -->
         <div class="project" id="project">
@@ -156,40 +216,42 @@ document.addEventListener('DOMContentLoaded', function(event) {
                 </div>
             </div>
         </div>
-        <script>function expand() {
+        
+        <script>$('.slideup, .project-slider').click(function() {
+    $('.project-slider').toggleClass('close');
+});
+function expand() {
     $('.scrollable').animate({
         width: "15%"
     });
-    $(".columns p").css("visibility", "hidden");
     $('canvas').animate({
         width: "15%"
     });
-    $('#stem').animate({
-        width: "100%",
-        height: "100vh",
-        visibility: "visible"
-    });
+    $('.scrollable h2').css("visibility", "hidden");
+    $(".columns p").css("visibility", "hidden");
     $('.project').animate({
         width: "85%"
     });
-    console.log("clicked");
 }
 function unexpand() {
     $('.scrollable').animate({
         width: "100%"
     });
-    $(".columns p").css("visibility", "visible");
-    $('#stem').animate({
-        width: "40%",
-        height: "600vh",
-        visibility: "hidden"
-    });
     $('canvas').animate({
         width: "100%"
     });
+    $('.scrollable h2').css("visibility", "visible");
+    $(".columns p").css("visibility", "visible");
     $('.project').animate({
         width: "0%"
     });
+}
+function expand2() {
+    $('.project').animate({
+        width: "100%"
+    });
+    $('.scrollable h2').css("visibility", "hidden");
+    $(".columns p").css("visibility", "hidden");
     console.log("clicked");
 }
 
